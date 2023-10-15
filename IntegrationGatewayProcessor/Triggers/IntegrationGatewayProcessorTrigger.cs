@@ -16,16 +16,16 @@ namespace IntegrationGatewayProcessor.Triggers
 
 
 
-        [Function("IntegrationGatewayProcessorSenderTrigger")]
+        [Function("IntegrationGatewayProcessorFileSenderTrigger")]
         public static async Task<HttpResponseData> HttpStart(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req,
         [DurableClient] DurableTaskClient client,
         FunctionContext executionContext)
         {
-            ILogger logger = executionContext.GetLogger("IntegrationGatewayProcessorSenderTrigger");
+            ILogger logger = executionContext.GetLogger("IntegrationGatewayProcessorFileSenderTrigger");
 
             // Function input comes from the request content.
-            string instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(IntegrationGatewayProcessorOrchestrator.IntegrationGatewayProcessorSenderOrchestrator));
+            string instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(IntegrationGatewayFileSendOrchestrator.IntegrationGatewayFileSenderOrchestrator));
 
             logger.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
 

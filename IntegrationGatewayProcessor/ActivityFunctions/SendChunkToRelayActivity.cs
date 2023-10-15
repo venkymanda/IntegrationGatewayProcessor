@@ -11,14 +11,14 @@ using System.Threading.Tasks;
 
 namespace IntegrationGatewayProcessor.ActivityFunctions
 {
-    [DurableTask(nameof(SendFileActivity))]
-    public class SendFileActivity 
+    [DurableTask(nameof(SendChunkToRelayActivity))]
+    public class SendChunkToRelayActivity : TaskActivity<string, bool>
     {
         private readonly ILogger logger;
         private readonly IAzureRelaySenderService _azureRelaySenderService;
         private readonly IAzureRelayServiceHelper _azureRelayServiceHelper;
 
-        public SendFileActivity(ILogger<SendFileActivity> logger,IAzureRelayServiceHelper azureRelayServiceHelper,IAzureRelaySenderService azureRelaySenderService) // activites have access to DI.
+        public SendChunkToRelayActivity(ILogger<SendChunkToRelayActivity> logger,IAzureRelayServiceHelper azureRelayServiceHelper,IAzureRelaySenderService azureRelaySenderService) // activites have access to DI.
         {
             this.logger = logger;
             _azureRelaySenderService = azureRelaySenderService;
@@ -26,15 +26,14 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
         }
 
 
-        [Function(nameof(SendFileActivity))]
-        public  string SendFileActivityFunction([ActivityTrigger] string name, FunctionContext executionContext)
+        public async override Task<bool> RunAsync(TaskActivityContext context, string input)
         {
-            ILogger logger = executionContext.GetLogger("SendFileActivity");
-            logger.LogInformation("Saying hello to {name}.", name);
-            return $"Hello {name}!";
            
-            _azureRelaySenderService.SendFileAsync(name);
-            return null;
+            logger.LogInformation("Saying hello to {name}.", input);
+          
+           
+            await _azureRelaySenderService.SendFileAsync(input);
+            return true;
         }
     }
 
