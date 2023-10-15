@@ -18,6 +18,9 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
         private readonly IAzureRelaySenderService _azureRelaySenderService;
         private readonly IAzureRelayServiceHelper _azureRelayServiceHelper;
 
+        private static SemaphoreSlim semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs for Conttrolling Parallel execution Limit
+
+
         public SendChunkToRelayActivity(ILogger<SendChunkToRelayActivity> logger,IAzureRelayServiceHelper azureRelayServiceHelper,IAzureRelaySenderService azureRelaySenderService) // activites have access to DI.
         {
             this.logger = logger;
@@ -28,12 +31,24 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
 
         public async override Task<bool> RunAsync(TaskActivityContext context, string input)
         {
-           
-            logger.LogInformation("Saying hello to {name}.", input);
-          
-           
-            await _azureRelaySenderService.SendFileAsync(input);
-            return true;
+            await semaphore.WaitAsync();
+
+            try
+            {
+
+                logger.LogInformation("Saying hello to {name}.", input);
+
+                await _azureRelaySenderService.SendFileAsync(input);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+            finally
+            {
+                semaphore.Release();
+            }
         }
     }
 

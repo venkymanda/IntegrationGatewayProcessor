@@ -18,7 +18,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
     public class GetChunkDataActivity : TaskActivity<string, byte[]>
     {
         private readonly ILogger logger;
-        private static SemaphoreSlim semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs
+        private static SemaphoreSlim semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs for Conttrolling Parallel execution Limit
 
         public GetChunkDataActivity(ILogger<GetChunkDataActivity> logger) // activites have access to DI.
         {
