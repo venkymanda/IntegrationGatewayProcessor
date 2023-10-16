@@ -66,7 +66,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
             try
             {
                 byte[] chunkData = await context.CallActivityAsync<byte[]>("GetChunkDataActivity", blobContainerName);
-                bool sentSuccessfully = await context.CallActivityAsync<bool>("SendChunkToRelayActivity", Compress(chunkData));
+                bool sentSuccessfully = await context.CallActivityAsync<bool>("SendChunkToRelayActivity", chunkData);
                 return sentSuccessfully;
             }
             catch (Exception ex)
@@ -96,17 +96,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
         //    // Implement logic to send the chunk to Azure Relay using HttpClient
         //}
 
-        private static byte[] Compress(byte[] data)
-        {
-            using (var compressedStream = new MemoryStream())
-            {
-                using (var gzipStream = new GZipStream(compressedStream, CompressionMode.Compress))
-                {
-                    gzipStream.Write(data, 0, data.Length);
-                }
-                return compressedStream.ToArray();
-            }
-        }
+       
     }
 
 }
