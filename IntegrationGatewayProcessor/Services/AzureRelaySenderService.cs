@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
@@ -117,12 +118,16 @@ namespace IntegrationGatewayProcessor.Services
         }
 
         // Implement your compression logic here
-        private byte[] Compress(byte[] data)
+        private static byte[] Compress(byte[] data)
         {
-            // Implement compression logic (e.g., using GZipStream or other libraries)
-            // Return the compressed data
-            // If compression is not desired, return the input data as-is
-            return data;
+            using (var compressedStream = new MemoryStream())
+            {
+                using (var gzipStream = new GZipStream(compressedStream, CompressionMode.Compress))
+                {
+                    gzipStream.Write(data, 0, data.Length);
+                }
+                return compressedStream.ToArray();
+            }
         }
     }
 }
