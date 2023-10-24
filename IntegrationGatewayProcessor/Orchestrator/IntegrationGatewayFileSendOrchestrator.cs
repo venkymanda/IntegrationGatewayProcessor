@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using IntegrationGatewayProcessor.Models;
 
 namespace IntegrationGatewayProcessor.Orchestrator
 {
@@ -29,12 +30,13 @@ namespace IntegrationGatewayProcessor.Orchestrator
                 string blobContainerName = context.GetInput<string>() ?? throw new ArgumentNullException("blobContainerName");
                 string blobName = context.GetInput<string>() ?? throw new ArgumentNullException("blobName");
                 int chunkSize = 8192; // Chunk size in bytes
+
                 int totalChunks = GetTotalChunks(blobContainerName, blobName, chunkSize);
 
                 var tasks = new List<Task<bool>>();
                 for (int currentChunkSequence = 0; currentChunkSequence < totalChunks; currentChunkSequence++)
                 {
-                    tasks.Add(ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence, chunkSize));
+                    tasks.Add(ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence ,chunkSize));
                 }
 
                 // Wait for all tasks to complete before continuing
@@ -65,8 +67,15 @@ namespace IntegrationGatewayProcessor.Orchestrator
         {
             try
             {
-                byte[] chunkData = await context.CallActivityAsync<byte[]>("GetChunkDataActivity", blobContainerName);
-                bool sentSuccessfully = await context.CallActivityAsync<bool>("SendChunkToRelayActivity", chunkData);
+                BlobDTO blobDTO = new BlobDTO() { 
+                    BlobContainerName = blobContainerName,
+                    BlobName = blobName,
+                    ChunkSize = chunkSize,
+                    CurrentChunkSequence = currentChunkSequence
+                
+                };
+                var outputDTO                 = await context.CallActivityAsync<BlobDTO>("GetChunkDataActivity", blobDTO);
+                bool sentSuccessfully         = await context.CallActivityAsync<bool>("SendChunkToRelayActivity", outputDTO);
                 return sentSuccessfully;
             }
             catch (Exception ex)
@@ -86,7 +95,29 @@ namespace IntegrationGatewayProcessor.Orchestrator
             // Implement the logic to calculate the total number of chunks based on file size and chunk size.
             // You may need to interact with Azure Blob Storage to determine the file size.
             // Return the total number of chunks.
-            return 1;
+            // You'll need to interact with Azure Blob Storage to determine the file size.
+            // Replace "<YourConnectionString>" with your Azure Blob Storage connection string.
+
+            var blobServiceClient = new BlobServiceClient("<YourConnectionString>");
+
+            // Get a reference to the container
+            var containerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
+
+            // Get a reference to the blob
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            // Get the blob's properties to obtain its size
+            BlobProperties blobProperties = blobClient.GetProperties();
+
+            long fileSize = blobProperties.ContentLength;
+
+            // Calculate the total number of chunks
+            int totalChunks = (int)Math.Ceiling((double)fileSize / chunkSize);
+
+            // Ensure the totalChunks is at least 1
+            totalChunks = Math.Max(totalChunks, 1);
+
+            return totalChunks;
         }
 
       

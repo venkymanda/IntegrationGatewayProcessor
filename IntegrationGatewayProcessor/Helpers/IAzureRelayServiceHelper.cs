@@ -10,5 +10,7 @@ namespace IntegrationGatewayProcessor.Helpers
     {
         Task<Stream> GetBlobStreamAsync(string blobContainerName, string blobName);
         void ConfigureHttpClient(HttpClient httpClient);
+
+        string GetSasTokenAsync();
     }
 }
