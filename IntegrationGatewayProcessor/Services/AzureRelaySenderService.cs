@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using IntegrationGatewayProcessor.Models;
 
 namespace IntegrationGatewayProcessor.Services
 {
@@ -14,60 +15,43 @@ namespace IntegrationGatewayProcessor.Services
     {
         private readonly ILogger<AzureRelaySenderService> _logger;
         private readonly IAzureRelayServiceHelper _relayServiceHelper;
+        private readonly HttpClient _httpclient;
 
         public AzureRelaySenderService(
             ILogger<AzureRelaySenderService> logger,
-            IAzureRelayServiceHelper relayServiceHelper)
+            IAzureRelayServiceHelper relayServiceHelper,
+            IHttpClientFactory httpClientFactory)
         {
-            _logger = logger;
+            _logger             = logger;
             _relayServiceHelper = relayServiceHelper;
+            _httpclient         = httpClientFactory.CreateClient();
         }
 
-        public async Task<bool> SendFileAsync(string blobName)
+        public async Task<bool> SendFileAsync(BlobDTO input)
         {
-            string blobContainerName = "";
+            
             try
             {
-                // Retrieve the last successfully sent chunk sequence number from storage
-                var lastSentChunkSequence = await GetLastSentChunkSequenceAsync(blobContainerName, blobName);
+                
+                byte[] buffer = new byte[input.ChunkSize]; // Chunk size in bytes
 
-                using (var httpClient = new HttpClient())
+                // Create a chunk from the buffer
+                byte[] chunkData = input.Data;
+                Array.Copy(buffer, chunkData, input.ChunkSize);
+
+                // Compress the chunk (implement your compression logic)
+                byte[] compressedChunk = Compress(buffer);
+
+                // Send the chunk to the Azure Relay service
+                if (!await SendChunkToRelayAsync(compressedChunk, input))
                 {
-                    // Configure the HttpClient with the necessary headers and settings for Azure Relay
-                    _relayServiceHelper.ConfigureHttpClient(httpClient);
-
-                    // Initialize the current chunk sequence
-                    long currentChunkSequence = lastSentChunkSequence + 1;
-
-                    using (var blobStream = await _relayServiceHelper.GetBlobStreamAsync(blobContainerName, blobName))
-                    {
-                        byte[] buffer = new byte[8192]; // Chunk size in bytes
-                        int bytesRead;
-
-                        while ((bytesRead = await blobStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            // Create a chunk from the buffer
-                            byte[] chunkData = new byte[bytesRead];
-                            Array.Copy(buffer, chunkData, bytesRead);
-
-                            // Compress the chunk (implement your compression logic)
-                            byte[] compressedChunk = Compress(chunkData);
-
-                            // Send the chunk to the Azure Relay service
-                            if (!await SendChunkToRelayAsync(httpClient, compressedChunk, currentChunkSequence))
-                            {
-                                _logger.LogError($"Failed to send chunk {currentChunkSequence}.");
-                                return false;
-                            }
-
-                            _logger.LogInformation($"Chunk {currentChunkSequence} sent successfully.");
-                            currentChunkSequence++;
-
-                            // Update the entity state with the last successfully sent chunk sequence
-                            await UpdateLastSentChunkSequenceAsync(blobContainerName, blobName, currentChunkSequence - 1);
-                        }
-                    }
+                    _logger.LogError($"Failed to send chunk {input.CurrentChunkSequence}.");
+                    return false;
                 }
+
+                _logger.LogInformation($"Chunk {input.CurrentChunkSequence} sent successfully.");
+                        
+                
 
                 _logger.LogInformation("File transfer completed successfully.");
                 return true;
@@ -79,29 +63,22 @@ namespace IntegrationGatewayProcessor.Services
             }
         }
 
-        // Implement the GetLastSentChunkSequenceAsync and UpdateLastSentChunkSequenceAsync methods
-        private async Task<long> GetLastSentChunkSequenceAsync(string blobContainerName, string blobName)
-        {
-            // Implement your code to retrieve the last sent chunk sequence from storage
-            // For example, you can use Azure Blob Storage or any other storage mechanism
-            return 0; // Placeholder, replace with your implementation
-        }
 
-        private async Task UpdateLastSentChunkSequenceAsync(string blobContainerName, string blobName, long sequence)
-        {
-            // Implement your code to update the last sent chunk sequence in storage
-            // For example, you can use Azure Blob Storage or any other storage mechanism
-            // Make sure to update the state atomically to ensure consistency
-        }
-
-        private async Task<bool> SendChunkToRelayAsync(HttpClient httpClient, byte[] compressedChunk, long chunkSequence)
+        private async Task<bool> SendChunkToRelayAsync( byte[] compressedChunk, BlobDTO input)
         {
             try
             {
                 // Create a request to send the compressed chunk to the Azure Relay service
                 var requestContent = new ByteArrayContent(compressedChunk);
+
                 requestContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                var response = await httpClient.PostAsync($"relay-service-url/{chunkSequence}", requestContent);
+
+                requestContent.Headers.Add("X-Filename", input.BlobName);
+                requestContent.Headers.Add("X-ChunkSize", input.ChunkSize.ToString());
+                requestContent.Headers.Add("X-ChunkSequence", input.CurrentChunkSequence.ToString());
+                requestContent.Headers.Add("X-TotalChunks", input.TotalChunks.ToString());
+                requestContent.Headers.Add("X-TotalSize", input.TotalSize.ToString());
+                var response = await _httpclient.PostAsync($"relay-service-url/{input.CurrentChunkSequence}", requestContent);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -112,7 +89,7 @@ namespace IntegrationGatewayProcessor.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"An error occurred while sending chunk {chunkSequence}: {ex.Message}");
+                _logger.LogError($"An error occurred while sending chunk {input.CurrentChunkSequence}: {ex.Message}");
                 return false;
             }
         }

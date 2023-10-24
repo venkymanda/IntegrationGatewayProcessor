@@ -11,11 +11,12 @@ using Microsoft.DurableTask;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Threading;
+using IntegrationGatewayProcessor.Models;
 
 namespace IntegrationGatewayProcessor.ActivityFunctions
 {
     [DurableTask(nameof(GetChunkDataActivity))]
-    public class GetChunkDataActivity : TaskActivity<string, byte[]>
+    public class GetChunkDataActivity : TaskActivity<BlobDTO, BlobDTO>
     {
         private readonly ILogger logger;
         private static SemaphoreSlim semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs for Conttrolling Parallel execution Limit
@@ -25,7 +26,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
             this.logger = logger;
         }
 
-        public async override Task<byte[]> RunAsync(TaskActivityContext context, string input)
+        public async override Task<BlobDTO> RunAsync(TaskActivityContext context, BlobDTO input)
         {
             // implementation here TaskActivity<string,string > is what we have to change to relevant input type object and use it later inside here
 
@@ -35,14 +36,26 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
 
             try
             {
-                string blobContainerName = input;//Change
-                string connectionstring = input;//change
-                string blobName = input;//Change
-                long currentChunkSequence = 1;// Change
-                int chunkSize = 1;// change
+                string blobContainerName = input.BlobContainerName;
+                string connectionstring = input.BlobContainerName;
+                string blobName = input.BlobName;
+                long currentChunkSequence = input.CurrentChunkSequence;
+                int chunkSize = input.ChunkSize;
+                
 
                 var blobClient = new BlobClient(connectionstring, blobContainerName, blobName);
-                
+
+                long fileSize = blobClient.GetProperties().Value.ContentLength; // Get the file size from the blob properties
+
+                // Calculate the total number of chunks
+                long totalChunks = (fileSize + chunkSize - 1) / chunkSize;
+
+                // Ensure the totalChunks is at least 1
+                totalChunks = Math.Max(totalChunks, 1);
+
+                // You can then assign the totalChunks to your input object
+                input.TotalChunks = totalChunks;
+
                 // Calculate the range for this chunk
                 long startOffset = currentChunkSequence * chunkSize;
                 long endOffset = startOffset + chunkSize - 1;
@@ -51,12 +64,14 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
                 {
                     // Adjust the endOffset to avoid reading beyond the end of the file.
                     endOffset = blobClient.GetProperties().Value.ContentLength - 1;
+                    input.TotalSize = blobClient.GetProperties().Value.ContentLength;
                 }
 
                 if (startOffset > endOffset)
                 {
                     // No more data to read
-                    return new byte[0];
+                    input.Data = new byte[0];
+                    return input;
                 }
                 BlobOpenReadOptions blobOpenReadOptions = new BlobOpenReadOptions(true){ BufferSize = chunkSize ,Position=startOffset};
                 using (Stream blobStream = await blobClient.OpenReadAsync(blobOpenReadOptions))
@@ -67,11 +82,13 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
                     if (bytesRead > 0)
                     {
                         // Return the actual bytes read as a chunk
-                        return chunkData.Take(bytesRead).ToArray();
+                        input.Data= chunkData.Take(bytesRead).ToArray();
+                        return input;
                     }
                     else
                     {
-                        return new byte[0]; // No more data to read
+                        input.Data = new byte[0];
+                        return input; // No more data to read
                     }
                 }
                 

@@ -8,11 +8,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IntegrationGatewayProcessor.Models;
 
 namespace IntegrationGatewayProcessor.ActivityFunctions
 {
     [DurableTask(nameof(SendChunkToRelayActivity))]
-    public class SendChunkToRelayActivity : TaskActivity<string, bool>
+    public class SendChunkToRelayActivity : TaskActivity<BlobDTO, bool>
     {
         private readonly ILogger<SendChunkToRelayActivity> _logger;
         private readonly IAzureRelaySenderService _azureRelaySenderService;
@@ -29,7 +30,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
             _azureRelayServiceHelper = azureRelayServiceHelper;
         }
 
-        public override async Task<bool> RunAsync(TaskActivityContext context, string input)
+        public override async Task<bool> RunAsync(TaskActivityContext context, BlobDTO input)
         {
             await _semaphore.WaitAsync();
 
