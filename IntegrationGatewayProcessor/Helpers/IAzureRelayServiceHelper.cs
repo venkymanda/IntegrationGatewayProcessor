@@ -12,5 +12,7 @@ namespace IntegrationGatewayProcessor.Helpers
         void ConfigureHttpClient(HttpClient httpClient);
 
         string GetSasTokenAsync();
+
+        int GetTotalChunks(string blobContainerName, string blobName, int chunkSize);
     }
 }

@@ -31,7 +31,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
                 string blobName = context.GetInput<string>() ?? throw new ArgumentNullException("blobName");
                 int chunkSize = 8192; // Chunk size in bytes
 
-                int totalChunks = GetTotalChunks(blobContainerName, blobName, chunkSize);
+                int totalChunks = await context.CallActivityAsync<int>("GetTotalChunksActivity", new BlobDTO { BlobContainerName=blobContainerName,BlobName=blobName,ChunkSize=chunkSize});
 
                 var tasks = new List<Task<bool>>();
                 for (int currentChunkSequence = 0; currentChunkSequence < totalChunks; currentChunkSequence++)
@@ -90,35 +90,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
             }
         }
 
-        private static int GetTotalChunks(string blobContainerName, string blobName, int chunkSize)
-        {
-            // Implement the logic to calculate the total number of chunks based on file size and chunk size.
-            // You may need to interact with Azure Blob Storage to determine the file size.
-            // Return the total number of chunks.
-            // You'll need to interact with Azure Blob Storage to determine the file size.
-            // Replace "<YourConnectionString>" with your Azure Blob Storage connection string.
-
-            var blobServiceClient = new BlobServiceClient("<YourConnectionString>");
-
-            // Get a reference to the container
-            var containerClient = blobServiceClient.GetBlobContainerClient(blobContainerName);
-
-            // Get a reference to the blob
-            var blobClient = containerClient.GetBlobClient(blobName);
-
-            // Get the blob's properties to obtain its size
-            BlobProperties blobProperties = blobClient.GetProperties();
-
-            long fileSize = blobProperties.ContentLength;
-
-            // Calculate the total number of chunks
-            int totalChunks = (int)Math.Ceiling((double)fileSize / chunkSize);
-
-            // Ensure the totalChunks is at least 1
-            totalChunks = Math.Max(totalChunks, 1);
-
-            return totalChunks;
-        }
+       
 
       
 

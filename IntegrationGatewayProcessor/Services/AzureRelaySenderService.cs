@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using IntegrationGatewayProcessor.Models;
 using Microsoft.Extensions.Configuration;
+using Polly;
 
 namespace IntegrationGatewayProcessor.Services
 {
@@ -75,6 +76,15 @@ namespace IntegrationGatewayProcessor.Services
                 // Create a request to send the compressed chunk to the Azure Relay service
                 var requestContent = new ByteArrayContent(compressedChunk);
 
+                var retryPolicy = Policy
+                        .Handle<HttpRequestException>()
+                        .Or<TimeoutException>()
+                        .Retry(3, (exception, retryCount) =>
+                        {
+                            // Log the exception and retry count
+                            _logger.LogWarning($"Retry {retryCount} due to {exception}");
+                        });
+
                 requestContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 
                 string sasToken =  _relayServiceHelper.GetSasTokenAsync(); // Get the SAS token from the helper
@@ -86,7 +96,8 @@ namespace IntegrationGatewayProcessor.Services
                 requestContent.Headers.Add("X-ChunkSequence", input.CurrentChunkSequence.ToString());
                 requestContent.Headers.Add("X-TotalChunks", input.TotalChunks.ToString());
                 requestContent.Headers.Add("X-TotalSize", input.TotalSize.ToString());
-                var response = await _httpclient.PostAsync($"{_configuration["RelayURL"]}", requestContent);
+                var response = await retryPolicy.Execute(() =>  _httpclient.PostAsync($"{_configuration["RelayURL"]}", requestContent));
+
 
                 if (!response.IsSuccessStatusCode)
                 {
