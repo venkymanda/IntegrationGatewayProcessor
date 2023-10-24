@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using System.Threading;
 using IntegrationGatewayProcessor.Models;
 using Microsoft.Extensions.Configuration;
+using Polly;
+using Azure.Core;
 
 namespace IntegrationGatewayProcessor.ActivityFunctions
 {
@@ -41,6 +43,19 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
 
             try
             {
+                // Provide the client configuration options for connecting to Azure Blob Storage
+                BlobClientOptions blobOptions = new BlobClientOptions()
+                {
+                    Retry = {
+                        Delay = TimeSpan.FromSeconds(2),
+                        MaxRetries = 5,
+                        Mode = RetryMode.Exponential,
+                        MaxDelay = TimeSpan.FromSeconds(10),
+                        NetworkTimeout = TimeSpan.FromSeconds(100)
+                    },
+                };
+
+
                 string blobContainerName = input.BlobContainerName;
                 string connectionstring = _configuration["StorageConnectionString"];
                 string blobName = input.BlobName;
@@ -48,7 +63,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
                 int chunkSize = input.ChunkSize;
                 
 
-                var blobClient = new BlobClient(connectionstring, blobContainerName, blobName);
+                var blobClient = new BlobClient(connectionstring, blobContainerName, blobName,blobOptions);
 
                 long fileSize = blobClient.GetProperties().Value.ContentLength; // Get the file size from the blob properties
 
