@@ -12,18 +12,23 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Threading;
 using IntegrationGatewayProcessor.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace IntegrationGatewayProcessor.ActivityFunctions
 {
     [DurableTask(nameof(GetChunkDataActivity))]
     public class GetChunkDataActivity : TaskActivity<BlobDTO, BlobDTO>
     {
-        private readonly ILogger logger;
+        private readonly ILogger _logger;
+        private readonly IConfiguration _configuration;
         private static SemaphoreSlim semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs for Conttrolling Parallel execution Limit
 
-        public GetChunkDataActivity(ILogger<GetChunkDataActivity> logger) // activites have access to DI.
+        public GetChunkDataActivity(
+            ILogger<GetChunkDataActivity> logger,
+            IConfiguration configuration) // activites have access to DI.
         {
-            this.logger = logger;
+            _logger = logger;
+            _configuration = configuration;
         }
 
         public async override Task<BlobDTO> RunAsync(TaskActivityContext context, BlobDTO input)
@@ -37,7 +42,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
             try
             {
                 string blobContainerName = input.BlobContainerName;
-                string connectionstring = input.BlobContainerName;
+                string connectionstring = _configuration["StorageConnectionString"];
                 string blobName = input.BlobName;
                 long currentChunkSequence = input.CurrentChunkSequence;
                 int chunkSize = input.ChunkSize;

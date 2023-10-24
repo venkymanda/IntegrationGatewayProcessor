@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using IntegrationGatewayProcessor.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace IntegrationGatewayProcessor.Services
 {
@@ -16,15 +17,18 @@ namespace IntegrationGatewayProcessor.Services
         private readonly ILogger<AzureRelaySenderService> _logger;
         private readonly IAzureRelayServiceHelper _relayServiceHelper;
         private readonly HttpClient _httpclient;
+        private readonly IConfiguration _configuration;
 
         public AzureRelaySenderService(
             ILogger<AzureRelaySenderService> logger,
             IAzureRelayServiceHelper relayServiceHelper,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration)
         {
             _logger             = logger;
             _relayServiceHelper = relayServiceHelper;
             _httpclient         = httpClientFactory.CreateClient();
+            _configuration = configuration;
         }
 
         public async Task<bool> SendFileAsync(BlobDTO input)
@@ -73,12 +77,16 @@ namespace IntegrationGatewayProcessor.Services
 
                 requestContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 
+                string sasToken =  _relayServiceHelper.GetSasTokenAsync(); // Get the SAS token from the helper
+
+                _httpclient.DefaultRequestHeaders.Remove("Authorization");
+                _httpclient.DefaultRequestHeaders.Add("Authorization", sasToken);
                 requestContent.Headers.Add("X-Filename", input.BlobName);
                 requestContent.Headers.Add("X-ChunkSize", input.ChunkSize.ToString());
                 requestContent.Headers.Add("X-ChunkSequence", input.CurrentChunkSequence.ToString());
                 requestContent.Headers.Add("X-TotalChunks", input.TotalChunks.ToString());
                 requestContent.Headers.Add("X-TotalSize", input.TotalSize.ToString());
-                var response = await _httpclient.PostAsync($"relay-service-url/{input.CurrentChunkSequence}", requestContent);
+                var response = await _httpclient.PostAsync($"{_configuration["RelayURL"]}", requestContent);
 
                 if (!response.IsSuccessStatusCode)
                 {
