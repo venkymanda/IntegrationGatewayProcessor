@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using IntegrationGatewayProcessor.Models;
+using Newtonsoft.Json;
 
 namespace IntegrationGatewayProcessor.Orchestrator
 {
@@ -23,12 +24,14 @@ namespace IntegrationGatewayProcessor.Orchestrator
         {
             ILogger logger = context.CreateReplaySafeLogger(nameof(IntegrationGatewayFileSenderOrchestrator));
 
-          
+            InputRequestDTO inputRequestDTO = context.GetInput<InputRequestDTO>() ?? throw new ArgumentNullException(nameof(inputRequestDTO));
+
 
             try
             {
-                string blobContainerName = context.GetInput<string>() ?? throw new ArgumentNullException("blobContainerName");
-                string blobName = context.GetInput<string>() ?? throw new ArgumentNullException("blobName");
+               
+                string blobContainerName = inputRequestDTO.BlobContainerName?? throw new ArgumentNullException(nameof(blobContainerName));
+                string blobName = inputRequestDTO.BlobName ?? throw new ArgumentNullException(nameof(blobName));
                 int chunkSize = 8192; // Chunk size in bytes
 
                 int totalChunks = await context.CallActivityAsync<int>("GetTotalChunksActivity", new BlobDTO { BlobContainerName=blobContainerName,BlobName=blobName,ChunkSize=chunkSize});
@@ -44,15 +47,53 @@ namespace IntegrationGatewayProcessor.Orchestrator
 
                 // If you need additional orchestration logic, add it here.
 
-              
+                // After the main logic, add the callback URL and payload
 
+                var successPayload = new SuccessCallbackDTO
+                {
+                    Status = "success",
+                    Message = "File transfer completed successfully",
+                    ProcessedChunks = totalChunks,
+                    TotalBytesProcessed = totalChunks*chunkSize,
+                    TransactionId = inputRequestDTO.TransactionId,
+                    DocumentId = inputRequestDTO.BlobContainerName+"\\"+inputRequestDTO.BlobName 
+                };
+
+                string callbackPayload = JsonConvert.SerializeObject(successPayload); // You may need to use a JSON library, like Newtonsoft.Json
+
+                string callbackUrl = inputRequestDTO.CallbackURL;
+                
+
+                // Make the HTTP callback at the end of execution
+                var callbackstatus=(inputRequestDTO.DoCallBack)?await MakeHttpCallbackAsync(callbackUrl, callbackPayload):true;
+
+                // If you reach this point, it means the execution was successful
                 logger.LogInformation("File transfer completed successfully.");
-                return true;
+                return callbackstatus;
+
+
+
             }
             catch (Exception ex)
             {
                 logger.LogError($"An error occurred: {ex.Message}");
-                return false;
+                // Make the HTTP callback in case of error
+                var failurePayload = new FailureCallbackDTO
+                {
+                    Status = "failure",
+                    ErrorMessage = "An error occurred during file transfer",
+                    ErrorDetails = ex.ToString(),
+                    TransactionId = inputRequestDTO.TransactionId,
+                    DocumentId = inputRequestDTO.BlobContainerName + "\\" + inputRequestDTO.BlobName
+                };
+
+                string payloadJson = JsonConvert.SerializeObject(failurePayload); // You may need to use a JSON library, like Newtonsoft.Json
+
+                if (inputRequestDTO.DoCallBack) 
+                    await MakeHttpCallbackAsync(inputRequestDTO.CallbackURL, payloadJson);
+
+                return false; // Indicate that this task failed.
+
             }
         }
 
@@ -91,15 +132,26 @@ namespace IntegrationGatewayProcessor.Orchestrator
         }
 
        
-
-      
-
-        //private static async Task<bool> SendChunkToRelayAsync(HttpClient httpClient, byte[] chunkData, long sequence)
-        //{
-        //    // Implement logic to send the chunk to Azure Relay using HttpClient
-        //}
-
        
+
+    public static async Task<bool> MakeHttpCallbackAsync(string callbackUrl, string payload)
+    {
+        using (HttpClient httpClient = new HttpClient())
+        {
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync(callbackUrl, content);
+            return response.IsSuccessStatusCode;
+        }
     }
+
+
+
+    //private static async Task<bool> SendChunkToRelayAsync(HttpClient httpClient, byte[] chunkData, long sequence)
+    //{
+    //    // Implement logic to send the chunk to Azure Relay using HttpClient
+    //}
+
+
+}
 
 }
