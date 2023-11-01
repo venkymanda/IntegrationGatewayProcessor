@@ -30,6 +30,8 @@ namespace IntegrationGatewayProcessor.Orchestrator
             ILogger logger = context.CreateReplaySafeLogger(nameof(IntegrationGatewayFileSenderOrchestrator));
 
             InputRequestDTO inputRequestDTO = context.GetInput<InputRequestDTO>() ?? throw new ArgumentNullException(nameof(inputRequestDTO));
+            string inputRequestJson = JsonConvert.SerializeObject(inputRequestDTO);
+
 
 
             try
@@ -43,7 +45,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
 
                 var tasks = Enumerable.Range(0, totalChunks)
                                     .Select(currentChunkSequence => 
-                                            ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence ,chunkSize,inputRequestDTO.TransactionId))
+                                            ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence ,chunkSize,inputRequestDTO.TransactionId,inputRequestJson))
                                     .ToList();
 
 
@@ -110,7 +112,8 @@ namespace IntegrationGatewayProcessor.Orchestrator
                                   string blobName,
                                   int currentChunkSequence,
                                   int chunkSize,
-                                  string transactionid)
+                                  string transactionid,
+                                  string inputRequestJson)
         {
             try
             {
@@ -119,7 +122,8 @@ namespace IntegrationGatewayProcessor.Orchestrator
                     BlobName = blobName,
                     ChunkSize = chunkSize,
                     CurrentChunkSequence = currentChunkSequence,
-                    TransactionId = transactionid
+                    TransactionId = transactionid,
+                    InputRequest=inputRequestJson
                 
                 };
                 var outputDTO                 = await context.CallActivityAsync<BlobDTO>("GetChunkDataActivity", blobDTO);

@@ -12,7 +12,7 @@ namespace IntegrationGatewayProcessor.Models
        
             public string? BlobContainerName { get; set; }
             public string? BlobName { get; set; }
-            public string? RequestType { get; set; }
+            public RequestType? RequestType { get; set; }
             public string? Source { get; set; }
             public string? Destination { get; set; }
             public string? Direction { get; set; }
@@ -25,4 +25,14 @@ namespace IntegrationGatewayProcessor.Models
 
 
     }
+    public enum RequestType
+    {
+        UploadFile,
+        DownloadFile,
+        UploadFTPFile,
+        DownloadFTPFile,
+        SOAPRequest
+        // Add more request types as needed
+    }
+
 }
