@@ -96,6 +96,7 @@ namespace IntegrationGatewayProcessor.Services
                 requestContent.Headers.Add("X-ChunkSequence", input.CurrentChunkSequence.ToString());
                 requestContent.Headers.Add("X-TotalChunks", input.TotalChunks.ToString());
                 requestContent.Headers.Add("X-TotalSize", input.TotalSize.ToString());
+                requestContent.Headers.Add("X-TransactionID", input.TransactionId);
                 var response = await retryPolicy.Execute(() =>  _httpclient.PostAsync($"{_configuration["RelayURL"]}", requestContent));
 
 

@@ -15,6 +15,7 @@ namespace IntegrationGatewayProcessor.Models
         public long TotalChunks { get; set; }
         public byte[] Data { get; set; }
         public long TotalSize { get; set; }
+        public string TransactionId { get; set; }
     }
 
 }
