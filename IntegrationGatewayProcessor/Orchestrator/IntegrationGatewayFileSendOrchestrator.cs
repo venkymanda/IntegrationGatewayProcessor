@@ -18,6 +18,11 @@ namespace IntegrationGatewayProcessor.Orchestrator
     {
 
 
+        /// <summary>
+        /// The main orchestrator function that handles the file transfer process.
+        /// </summary>
+        /// <param name="context">The orchestration context.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         [Function(nameof(IntegrationGatewayFileSenderOrchestrator))]
         public static async Task<bool> IntegrationGatewayFileSenderOrchestrator(
          [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -36,11 +41,11 @@ namespace IntegrationGatewayProcessor.Orchestrator
 
                 int totalChunks = await context.CallActivityAsync<int>("GetTotalChunksActivity", new BlobDTO { BlobContainerName=blobContainerName,BlobName=blobName,ChunkSize=chunkSize});
 
-                var tasks = new List<Task<bool>>();
-                for (int currentChunkSequence = 0; currentChunkSequence < totalChunks; currentChunkSequence++)
-                {
-                    tasks.Add(ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence ,chunkSize));
-                }
+                var tasks = Enumerable.Range(0, totalChunks)
+                                    .Select(currentChunkSequence => 
+                                            ProcessAndSendChunkAsync(context, blobContainerName, blobName, currentChunkSequence ,chunkSize,inputRequestDTO.TransactionId))
+                                    .ToList();
+
 
                 // Wait for all tasks to complete before continuing
                 await Task.WhenAll(tasks);
@@ -56,7 +61,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
                     ProcessedChunks = totalChunks,
                     TotalBytesProcessed = totalChunks*chunkSize,
                     TransactionId = inputRequestDTO.TransactionId,
-                    DocumentId = inputRequestDTO.BlobContainerName+"\\"+inputRequestDTO.BlobName 
+                    DocumentId = $"{inputRequestDTO.BlobContainerName}\\{inputRequestDTO.BlobName}"
                 };
 
                 string callbackPayload = JsonConvert.SerializeObject(successPayload); // You may need to use a JSON library, like Newtonsoft.Json
@@ -84,7 +89,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
                     ErrorMessage = "An error occurred during file transfer",
                     ErrorDetails = ex.ToString(),
                     TransactionId = inputRequestDTO.TransactionId,
-                    DocumentId = inputRequestDTO.BlobContainerName + "\\" + inputRequestDTO.BlobName
+                    DocumentId = $"{inputRequestDTO.BlobContainerName}\\{inputRequestDTO.BlobName}"
                 };
 
                 string payloadJson = JsonConvert.SerializeObject(failurePayload); // You may need to use a JSON library, like Newtonsoft.Json
@@ -104,7 +109,8 @@ namespace IntegrationGatewayProcessor.Orchestrator
                                   string blobContainerName,
                                   string blobName,
                                   int currentChunkSequence,
-                                  int chunkSize)
+                                  int chunkSize,
+                                  string transactionid)
         {
             try
             {
@@ -112,7 +118,8 @@ namespace IntegrationGatewayProcessor.Orchestrator
                     BlobContainerName = blobContainerName,
                     BlobName = blobName,
                     ChunkSize = chunkSize,
-                    CurrentChunkSequence = currentChunkSequence
+                    CurrentChunkSequence = currentChunkSequence,
+                    TransactionId = transactionid
                 
                 };
                 var outputDTO                 = await context.CallActivityAsync<BlobDTO>("GetChunkDataActivity", blobDTO);
