@@ -16,6 +16,7 @@ namespace IntegrationGatewayProcessor.Models
         public byte[] Data { get; set; }
         public long TotalSize { get; set; }
         public string TransactionId { get; set; }
+        public string InputRequest { get; set; }
     }
 
 }
