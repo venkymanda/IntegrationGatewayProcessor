@@ -97,7 +97,13 @@ namespace IntegrationGatewayProcessor.Services
                 requestContent.Headers.Add("X-TotalChunks", input.TotalChunks.ToString());
                 requestContent.Headers.Add("X-TotalSize", input.TotalSize.ToString());
                 requestContent.Headers.Add("X-TransactionID", input.TransactionId);
+
+                //These Two are Default Heders which need to be added for all Future flows as well
+                #region Default Headers
                 requestContent.Headers.Add("X-InputRequest", input.InputRequest);
+                requestContent.Headers.Add("X-RequestType", RequestType.UploadFile.ToString());
+                #endregion
+
 
                 var response = await retryPolicy.Execute(() =>  _httpclient.PostAsync($"{_configuration["RelayURL"]}", requestContent));
 
