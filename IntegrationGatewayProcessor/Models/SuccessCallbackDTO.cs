@@ -14,6 +14,7 @@ namespace IntegrationGatewayProcessor.Models
         public long TotalBytesProcessed { get; set; }
         public string TransactionId { get; set; }
         public string DocumentId { get; set; }
+        public List<int> FailedChunks { get; set; }
     }
 
 }
