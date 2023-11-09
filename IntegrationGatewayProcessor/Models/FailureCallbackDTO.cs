@@ -8,11 +8,11 @@ namespace IntegrationGatewayProcessor.Models
 {
     public class FailureCallbackDTO
     {
-        public string Status { get; set; }
-        public string ErrorMessage { get; set; }
-        public string ErrorDetails { get; set; }
-        public string TransactionId { get; set; }
-        public string DocumentId { get; set; }
+        public string? Status { get; set; }
+        public string? ErrorMessage { get; set; }
+        public string? ErrorDetails { get; set; }
+        public string? TransactionId { get; set; }
+        public string? DocumentId { get; set; }
     }
 
 }
