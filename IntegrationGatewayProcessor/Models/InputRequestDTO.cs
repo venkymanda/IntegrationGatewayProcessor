@@ -20,7 +20,7 @@ namespace IntegrationGatewayProcessor.Models
             public string? Data { get; set; }
             public string? CallbackURL { get; set; }
             public bool DoCallBack { get; set; }
-            public string TransactionId { get; set; }
+            public string? TransactionId { get; set; }
         
 
 

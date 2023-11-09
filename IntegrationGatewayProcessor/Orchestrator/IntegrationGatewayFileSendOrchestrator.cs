@@ -91,16 +91,22 @@ namespace IntegrationGatewayProcessor.Orchestrator
                 };
 
                 string callbackPayload = JsonConvert.SerializeObject(successPayload); // You may need to use a JSON library, like Newtonsoft.Json
+                if (inputRequestDTO.DoCallBack && !string.IsNullOrEmpty(inputRequestDTO.CallbackURL))
+                {
 
-                string callbackUrl = inputRequestDTO.CallbackURL;
+
+                    string callbackUrl = inputRequestDTO.CallbackURL;
+                    // Make the HTTP callback at the end of execution
+                    var callbackstatus = (inputRequestDTO.DoCallBack) ? await MakeHttpCallbackAsync(callbackUrl, callbackPayload, logger) : true;
+                    // If you reach this point, it means the execution was successful
+                    logger.LogInformation("File transfer completed successfully.");
+                    return callbackstatus;
+                }
 
 
-                // Make the HTTP callback at the end of execution
-                var callbackstatus = (inputRequestDTO.DoCallBack) ? await MakeHttpCallbackAsync(callbackUrl, callbackPayload, logger) : true;
+                return true;
 
-                // If you reach this point, it means the execution was successful
-                logger.LogInformation("File transfer completed successfully.");
-                return callbackstatus;
+               
                 
 
 
@@ -127,8 +133,11 @@ namespace IntegrationGatewayProcessor.Orchestrator
 
                 string payloadJson = JsonConvert.SerializeObject(failurePayload); // You may need to use a JSON library, like Newtonsoft.Json
 
-                if (inputRequestDTO.DoCallBack)
+                if (inputRequestDTO.DoCallBack && !string.IsNullOrEmpty(inputRequestDTO.CallbackURL))
+                {
                     await MakeHttpCallbackAsync(inputRequestDTO.CallbackURL, payloadJson, logger);
+                }
+               
                 return false; // Indicate that this task failed.
             }
 
@@ -147,7 +156,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
 
                 string payloadJson = JsonConvert.SerializeObject(failurePayload); // You may need to use a JSON library, like Newtonsoft.Json
 
-                if (inputRequestDTO.DoCallBack) 
+                if (inputRequestDTO.DoCallBack && !string.IsNullOrEmpty(inputRequestDTO.CallbackURL)) 
                     await MakeHttpCallbackAsync(inputRequestDTO.CallbackURL, payloadJson,logger);
 
                 return false; // Indicate that this task failed.
