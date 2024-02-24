@@ -27,22 +27,37 @@ namespace IntegrationGatewayProcessor.Maintenance
             [DurableClient] DurableTaskClient client,
             ILogger log)
         {
-            var instancesCreatedFromDate = DateTime.Today.Subtract(TimeSpan.FromDays(90));
-            var instancesCreatedToDate = DateTime.Today.Subtract(TimeSpan.FromDays(84));
-            var statussesToPurge = new List<OrchestrationRuntimeStatus> {
-                OrchestrationRuntimeStatus.Completed,
-                OrchestrationRuntimeStatus.Terminated,
-            };
-            var purgefilter = new PurgeInstancesFilter()
+            try
             {
-                CreatedFrom = instancesCreatedFromDate,
-                CreatedTo = instancesCreatedToDate,
-                Statuses = statussesToPurge
-            };
+                var instancesCreatedFromDate = DateTime.Today.Subtract(TimeSpan.FromDays(9));
+                var instancesCreatedToDate = DateTime.Today.Subtract(TimeSpan.FromDays(0));
+                var statussesToPurge = new List<OrchestrationRuntimeStatus>();
+                statussesToPurge.Add(OrchestrationRuntimeStatus.Completed);
+                statussesToPurge.Add(OrchestrationRuntimeStatus.Terminated);
+            
+                var purgefilter = new PurgeInstancesFilter()
+                {
+                    CreatedFrom = instancesCreatedFromDate,
+                    CreatedTo = instancesCreatedToDate,
+                    Statuses = statussesToPurge
+                };
 
-            var purgeResult = await client.PurgeAllInstancesAsync(purgefilter);
+                var purgeResult = await client.PurgeAllInstancesAsync(purgefilter);
 
-            log.LogInformation($"Purged {purgeResult.PurgedInstanceCount} instances.");
+                log.LogInformation($"Purged {purgeResult.PurgedInstanceCount} instances.");
+            }
+            catch (AggregateException ae)
+            {
+                foreach (var ex in ae.InnerExceptions)
+                {
+                    // Handle each inner exception appropriately
+                    Console.WriteLine($"Inner exception: {ex.Message}");
+                }
+            }
+            catch ( Exception ex )
+            {
+                Console.WriteLine($"Exception: {ex.Message}");
+            }
         }
     }
 }

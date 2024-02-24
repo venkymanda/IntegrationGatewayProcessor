@@ -42,7 +42,7 @@ namespace IntegrationGatewayProcessor.Services
 
                 // Create a chunk from the buffer
                 byte[] chunkData = input.Data;
-                Array.Copy(buffer, chunkData, input.ChunkSize);
+                Array.Copy(chunkData, buffer, chunkData.Length);
 
                 // Compress the chunk (implement your compression logic)
                 byte[] compressedChunk = Compress(buffer);

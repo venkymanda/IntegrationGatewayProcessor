@@ -16,14 +16,14 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
     [DurableTask(nameof(GetTotalChunksActivity))]
     public class GetTotalChunksActivity : TaskActivity<BlobDTO, long>
     {
-        private readonly ILogger<SendChunkToRelayActivity> _logger;
+        private readonly ILogger<GetTotalChunksActivity> _logger;
        
         private readonly IAzureRelayServiceHelper _azureRelayServiceHelper;
         private readonly IConfiguration _configuration;
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(10); // Adjust the limit as per your needs for Conttrolling Parallel execution Limit
 
         public GetTotalChunksActivity(
-            ILogger<SendChunkToRelayActivity> logger,
+            ILogger<GetTotalChunksActivity> logger,
             IAzureRelayServiceHelper azureRelayServiceHelper,
             IConfiguration configuration)
         {

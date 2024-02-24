@@ -30,7 +30,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
         {
             ILogger logger = context.CreateReplaySafeLogger(nameof(IntegrationGatewayFileSenderOrchestrator));
 
-            InputRequestDTO inputRequestDTO = context.GetInput<InputRequestDTO>() ?? throw new ArgumentNullException(nameof(inputRequestDTO));
+            FileRequestDTO inputRequestDTO = context.GetInput<FileRequestDTO>() ?? throw new ArgumentNullException(nameof(inputRequestDTO));
             string inputRequestJson = JsonConvert.SerializeObject(inputRequestDTO);
 
 
@@ -41,6 +41,7 @@ namespace IntegrationGatewayProcessor.Orchestrator
                 string blobContainerName = inputRequestDTO.BlobContainerName?? throw new ArgumentNullException(nameof(blobContainerName));
                 string blobName = inputRequestDTO.BlobName ?? throw new ArgumentNullException(nameof(blobName));
                 int chunkSize = 8192; // Chunk size in bytes
+                string destinationpath=inputRequestDTO.DestinationPath ?? throw new ArgumentNullException(nameof(destinationpath));
 
                 int totalChunks = await context.CallActivityAsync<int>("GetTotalChunksActivity", new BlobDTO { BlobContainerName=blobContainerName,BlobName=blobName,ChunkSize=chunkSize});
 

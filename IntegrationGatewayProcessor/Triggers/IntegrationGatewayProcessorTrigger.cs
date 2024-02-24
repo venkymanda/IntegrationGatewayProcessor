@@ -27,7 +27,7 @@ namespace IntegrationGatewayProcessor.Triggers
             ILogger logger = executionContext.GetLogger("IntegrationGatewayProcessorFileSenderTrigger");
 
             // Deserialize the JSON string into a Input request object
-            var inputrequest = JsonConvert.DeserializeObject<InputRequestDTO>(req.ReadAsString());
+            var inputrequest = JsonConvert.DeserializeObject<FileRequestDTO>(req.ReadAsString());
 
 
             // Function input comes from the request content.
