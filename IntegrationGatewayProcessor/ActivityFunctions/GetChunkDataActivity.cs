@@ -120,7 +120,7 @@ namespace IntegrationGatewayProcessor.ActivityFunctions
 
                 // Log the error
                 // Handle the error appropriately
-                throw;
+                throw new Exception(ex.Message, ex);
             }
 
             finally

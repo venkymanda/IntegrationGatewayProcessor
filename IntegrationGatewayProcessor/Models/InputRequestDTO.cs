@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace IntegrationGatewayProcessor.Models
 {
-    public class InputRequestDTO
+    public interface InputRequestDTO
     {
 
        
